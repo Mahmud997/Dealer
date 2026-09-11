@@ -19,12 +19,12 @@
 const USE_DEMO = false; // ← false = реальный Firebase
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCvjSjUtvq79adrJGTk7YcWRXP6aEe0yh4",
+  authDomain: "dealer-8c77e.firebaseapp.com",
+  projectId: "dealer-8c77e",
+  storageBucket: "dealer-8c77e.firebasestorage.app",
+  messagingSenderId: "185020381560",
+  appId: "1:185020381560:web:1d4619f46452e0cc80f08d"
 };
 
 /**
