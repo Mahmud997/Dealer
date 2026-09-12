@@ -1,16 +1,25 @@
 /**
  * B2B Trade — Mini-1C
- * Main application logic (Updated with Profit, Margin, Print Invoices & Financial Reports)
+ * Main application logic (Updated with Dynamic Stores & Featured Products Carousel Management)
  */
 
 (function () {
     'use strict';
+
+    // ========== DEFAULT STORES ==========
+    const DEFAULT_STORES = [
+        "Магазин №1 (Абай)",
+        "Магазин №2 (Север)",
+        "Минимаркет '24/7'",
+        "ТЦ Мега"
+    ];
 
     // ========== STATE ==========
     const state = {
         user: null,
         role: 'seller', // 'seller' | 'admin'
         products: [],
+        stores: [],
         cart: {},          // { productId: qty }
         invoices: [],
         carouselIndex: 0,
@@ -108,6 +117,42 @@
         const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
         await db.collection('products').doc(id).delete();
         state.products = state.products.filter(p => p.id !== id);
+    }
+
+    // ========== STORES MANAGEMENT DATA LAYER ==========
+    async function loadStores() {
+        if (window.B2B && window.B2B.USE_DEMO) {
+            state.stores = window.B2B.DemoStore.get('stores', DEFAULT_STORES);
+            return;
+        }
+        try {
+            const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+            const doc = await db.collection('settings').doc('stores').get();
+            if (doc.exists && doc.data().list) {
+                state.stores = doc.data().list;
+            } else {
+                state.stores = [...DEFAULT_STORES];
+                await db.collection('settings').doc('stores').set({ list: state.stores });
+            }
+        } catch (e) {
+            console.error(e);
+            state.stores = [...DEFAULT_STORES];
+        }
+    }
+
+    async function saveStoresToDb(newList) {
+        state.stores = newList;
+        if (window.B2B && window.B2B.USE_DEMO) {
+            window.B2B.DemoStore.set('stores', newList);
+            return;
+        }
+        try {
+            const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+            await db.collection('settings').doc('stores').set({ list: newList });
+        } catch (e) {
+            console.error(e);
+            toast('Ошибка сохранения списка магазинов', 'error');
+        }
     }
 
     async function loadInvoices() {
@@ -330,6 +375,7 @@
                 <div class="aspect-square bg-slate-50 relative overflow-hidden">
                     <img src="${img}" alt="${escapeHtml(p.name)}" class="w-full h-full object-cover" loading="lazy"
                          onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=fce7f3&color=db2777&size=200'">
+                    ${p.isFeatured ? '<span class="absolute top-3 right-3 text-[10px] px-2 py-0.5 bg-gradient-to-r from-pink-500 to-violet-500 text-white font-bold rounded-full shadow-sm">Новинка</span>' : ''}
                     ${p.stock < 10 ? '<span class="absolute top-3 left-3 text-[10px] px-2 py-0.5 bg-rose-500 text-white font-semibold rounded-full shadow-sm">Мало на складе</span>' : ''}
                 </div>
                 <div class="p-4 flex flex-col flex-1">
@@ -365,6 +411,45 @@
         
         if (window.lucide) lucide.createIcons();
     }
+
+    // ========== RENDER STORES OPTIONS ==========
+    function renderStoresSelect() {
+        const select = $('#selectStore');
+        if (!select) return;
+        const currentVal = select.value;
+        
+        select.innerHTML = `<option value="">-- Выберите торговую точку --</option>` +
+            state.stores.map(st => `<option value="${escapeHtml(st)}"${st === currentVal ? ' selected' : ''}>${escapeHtml(st)}</option>`).join('');
+    }
+
+    function renderAdminStores() {
+        const container = $('#adminStoresList');
+        if (!container) return;
+
+        if (!state.stores.length) {
+            container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Магазины не добавлены</p>`;
+            return;
+        }
+
+        container.innerHTML = state.stores.map((st, idx) => `
+            <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                <span class="text-sm font-bold text-slate-800">${escapeHtml(st)}</span>
+                <button onclick="window.B2B_DeleteStore(${idx})" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 transition-colors">
+                    Удалить
+                </button>
+            </div>
+        `).join('');
+    }
+
+    window.B2B_DeleteStore = async function(index) {
+        if (!confirm('Удалить эту торговую точку?')) return;
+        const newStores = state.stores.filter((_, i) => i !== index);
+        await saveStoresToDb(newStores);
+        renderStoresSelect();
+        renderAdminStores();
+        updateCartUI();
+        toast('Магазин удален', 'success');
+    };
 
     // ========== RENDER INVOICE ==========
     function renderInvoice() {
@@ -410,15 +495,20 @@
         updateCartUI();
     }
 
-    // ========== RENDER CAROUSEL ==========
+    // ========== RENDER CAROUSEL & FEATURED MANAGEMENT ==========
     function renderCarousel() {
-        const featured = state.products.slice(0, 5);
+        // Если у товаров есть флаг isFeatured === true, берем их, иначе первые 5 товаров
+        let featured = state.products.filter(p => p.isFeatured);
+        if (featured.length === 0) {
+            featured = state.products.slice(0, 5);
+        }
+
         const container = $('#carouselContainer');
         const dots = $('#carouselDots');
         if (!container || !dots) return;
         
         if (featured.length === 0) {
-            container.innerHTML = `<div class="carousel-slide flex items-center justify-center text-slate-400 text-sm">Витрина товаров пуста</div>`;
+            container.innerHTML = `<div class="carousel-slide flex items-center justify-center text-slate-400 text-sm w-full">Витрина новинок пуста</div>`;
             dots.innerHTML = '';
             return;
         }
@@ -428,7 +518,7 @@
             return `
             <div class="carousel-slide flex items-center justify-between px-8 py-4 bg-gradient-to-r from-pink-500/10 to-violet-500/10 w-full shrink-0">
                 <div class="max-w-xs">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-pink-600 bg-pink-100 px-2.5 py-1 rounded-full">Рекомендуемый товар</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-pink-600 bg-pink-100 px-2.5 py-1 rounded-full">Новинка</span>
                     <h3 class="text-lg font-bold text-slate-800 mt-2 line-clamp-1">${escapeHtml(p.name)}</h3>
                     <div class="text-xl font-extrabold text-pink-600 mt-1">${fmt(p.price)}</div>
                 </div>
@@ -463,6 +553,36 @@
         });
     }
 
+    function renderAdminFeaturedProducts() {
+        const container = $('#adminFeaturedProductsList');
+        if (!container) return;
+
+        if (!state.products.length) {
+            container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Нет товаров для добавления в витрину</p>`;
+            return;
+        }
+
+        container.innerHTML = state.products.map(p => `
+            <label class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-2xl cursor-pointer hover:bg-slate-100 transition-colors">
+                <div class="flex items-center space-x-3 min-w-0">
+                    <img src="${p.image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(p.name)}" class="w-8 h-8 rounded-lg object-cover shrink-0">
+                    <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(p.name)}</span>
+                </div>
+                <input type="checkbox" ${p.isFeatured ? 'checked' : ''} onchange="window.B2B_ToggleFeatured('${p.id}', this.checked)" class="w-4 h-4 text-pink-600 rounded border-slate-300 focus:ring-pink-500">
+            </label>
+        `).join('');
+    }
+
+    window.B2B_ToggleFeatured = async function(id, isFeatured) {
+        const product = state.products.find(p => p.id === id);
+        if (!product) return;
+        product.isFeatured = isFeatured;
+        await saveProduct(product);
+        renderCarousel();
+        renderCatalog();
+        toast(isFeatured ? 'Товар добавлен в новинки' : 'Товар убран из новинок', 'info');
+    };
+
     // ========== RENDER ADMIN PRODUCTS & STATS ==========
     function renderAdminProducts() {
         const container = $('#adminProductsList');
@@ -478,7 +598,10 @@
                 <div class="flex items-center space-x-3 min-w-0">
                     <img src="${p.image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(p.name)}" class="w-10 h-10 rounded-xl object-cover shrink-0 border">
                     <div class="min-w-0">
-                        <p class="font-bold text-slate-800 text-sm truncate">${escapeHtml(p.name)}</p>
+                        <p class="font-bold text-slate-800 text-sm truncate">
+                            ${escapeHtml(p.name)} 
+                            ${p.isFeatured ? '<span class="text-[10px] bg-pink-100 text-pink-700 font-bold px-1.5 py-0.5 rounded-full ml-1">Новинка</span>' : ''}
+                        </p>
                         <p class="text-xs text-slate-400 font-medium">
                             Продажа: <span class="text-pink-600 font-bold">${fmt(p.price)}</span> 
                             | Закуп: <span class="text-slate-600 font-semibold">${fmt(p.costPrice || 0)}</span> 
@@ -851,6 +974,7 @@
         try {
             await deleteProductFromDb(id);
             renderAdminProducts();
+            renderAdminFeaturedProducts();
             renderCatalog();
             renderCarousel();
             renderAdminStats();
@@ -920,6 +1044,7 @@
                 await loadProducts();
                 renderCatalog();
                 renderAdminProducts();
+                renderAdminFeaturedProducts();
                 renderCarousel();
                 renderAdminStats();
                 toast(`Успешно импортировано товаров: ${importedProducts.length}`, 'success');
@@ -951,6 +1076,8 @@
         if (tabId === 'invoice') renderInvoice();
         if (tabId === 'admin') {
             renderAdminProducts();
+            renderAdminStores();
+            renderAdminFeaturedProducts();
             loadInvoices().then(renderAdminStats);
         }
         if (window.lucide) lucide.createIcons();
@@ -966,12 +1093,16 @@
 
     // ========== INIT DATA ==========
     async function initAppData() {
+        await loadStores();
         await loadProducts();
         await loadInvoices();
+        renderStoresSelect();
         renderCatalog();
         renderCarousel();
         updateCartUI();
         renderAdminProducts();
+        renderAdminStores();
+        renderAdminFeaturedProducts();
         renderAdminStats();
         
         setInterval(() => {
@@ -994,6 +1125,23 @@
         // Reset form
         $('#resetFormBtn')?.addEventListener('click', resetProductForm);
         
+        // Store Add Form
+        $('#addStoreForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const val = $('#newStoreName')?.value.trim();
+            if (!val) return;
+            if (state.stores.includes(val)) {
+                toast('Такой магазин уже существует', 'warn');
+                return;
+            }
+            const newList = [...state.stores, val];
+            await saveStoresToDb(newList);
+            if ($('#newStoreName')) $('#newStoreName').value = '';
+            renderStoresSelect();
+            renderAdminStores();
+            toast('Магазин успешно добавлен!', 'success');
+        });
+
         // Import & Export Sample
         $('#downloadSampleBtn')?.addEventListener('click', downloadSampleCSV);
         $('#importFileInput')?.addEventListener('change', (e) => {
@@ -1138,6 +1286,8 @@
         $('#addProductForm')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = $('#productId').value;
+            const existingProd = id ? state.products.find(p => p.id === id) : null;
+
             const name = $('#prodName').value.trim();
             const price = +$('#prodPrice').value;
             const costPrice = +$('#prodCostPrice').value || 0;
@@ -1150,7 +1300,7 @@
                 return;
             }
             
-            let image = imageUrlInput || null;
+            let image = imageUrlInput || existingProd?.image || null;
             if (fileInput?.files?.[0]) {
                 image = URL.createObjectURL(fileInput.files[0]);
             }
@@ -1161,7 +1311,8 @@
                 price,
                 costPrice,
                 stock,
-                image
+                image,
+                isFeatured: existingProd ? !!existingProd.isFeatured : false
             };
             
             try {
@@ -1171,6 +1322,7 @@
                 renderCatalog();
                 renderCarousel();
                 renderAdminProducts();
+                renderAdminFeaturedProducts();
                 renderAdminStats();
                 toast(id ? 'Товар обновлен' : 'Товар добавлен', 'success');
             } catch (err) {
