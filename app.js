@@ -1,6 +1,6 @@
 /**
- * B2B Trade — Mini-1C
- * Main application logic (Updated with Dynamic Stores & Featured Products Carousel Management)
+ * Senimdi Sapa Trade — Mini-1C
+ * Main application logic
  */
 
 (function () {
@@ -62,12 +62,12 @@
 
     // ========== DATA LAYER ==========
     async function loadProducts() {
-        if (window.B2B && window.B2B.USE_DEMO) {
-            state.products = window.B2B.DemoStore.get('products', []);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            state.products = window.SenimdiSapa.DemoStore.get('products', []);
             return;
         }
         try {
-            const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+            const db = window.db || (window.SenimdiSapa && window.SenimdiSapa.db) || firebase.firestore();
             const snap = await db.collection('products').get();
             state.products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch (e) {
@@ -77,8 +77,8 @@
     }
 
     async function saveProduct(product) {
-        if (window.B2B && window.B2B.USE_DEMO) {
-            const list = window.B2B.DemoStore.get('products', []);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            const list = window.SenimdiSapa.DemoStore.get('products', []);
             if (product.id) {
                 const idx = list.findIndex(p => p.id === product.id);
                 if (idx >= 0) list[idx] = product;
@@ -87,12 +87,12 @@
                 product.id = 'p' + Date.now() + Math.random().toString(36).substr(2, 4);
                 list.push(product);
             }
-            window.B2B.DemoStore.set('products', list);
+            window.SenimdiSapa.DemoStore.set('products', list);
             state.products = list;
             return product;
         }
         
-        const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+        const db = window.db || (window.SenimdiSapa && window.SenimdiSapa.db) || firebase.firestore();
         if (product.id) {
             const id = product.id;
             delete product.id;
@@ -107,26 +107,26 @@
     }
 
     async function deleteProductFromDb(id) {
-        if (window.B2B && window.B2B.USE_DEMO) {
-            let list = window.B2B.DemoStore.get('products', []);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            let list = window.SenimdiSapa.DemoStore.get('products', []);
             list = list.filter(p => p.id !== id);
-            window.B2B.DemoStore.set('products', list);
+            window.SenimdiSapa.DemoStore.set('products', list);
             state.products = list;
             return;
         }
-        const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+        const db = window.db || (window.SenimdiSapa && window.SenimdiSapa.db) || firebase.firestore();
         await db.collection('products').doc(id).delete();
         state.products = state.products.filter(p => p.id !== id);
     }
 
     // ========== STORES MANAGEMENT DATA LAYER ==========
     async function loadStores() {
-        if (window.B2B && window.B2B.USE_DEMO) {
-            state.stores = window.B2B.DemoStore.get('stores', DEFAULT_STORES);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            state.stores = window.SenimdiSapa.DemoStore.get('stores', DEFAULT_STORES);
             return;
         }
         try {
-            const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+            const db = window.db || (window.SenimdiSapa && window.SenimdiSapa.db) || firebase.firestore();
             const doc = await db.collection('settings').doc('stores').get();
             if (doc.exists && doc.data().list) {
                 state.stores = doc.data().list;
@@ -142,12 +142,12 @@
 
     async function saveStoresToDb(newList) {
         state.stores = newList;
-        if (window.B2B && window.B2B.USE_DEMO) {
-            window.B2B.DemoStore.set('stores', newList);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            window.SenimdiSapa.DemoStore.set('stores', newList);
             return;
         }
         try {
-            const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+            const db = window.db || (window.SenimdiSapa && window.SenimdiSapa.db) || firebase.firestore();
             await db.collection('settings').doc('stores').set({ list: newList });
         } catch (e) {
             console.error(e);
@@ -156,12 +156,12 @@
     }
 
     async function loadInvoices() {
-        if (window.B2B && window.B2B.USE_DEMO) {
-            state.invoices = window.B2B.DemoStore.get('invoices', []);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            state.invoices = window.SenimdiSapa.DemoStore.get('invoices', []);
             return;
         }
         try {
-            const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+            const db = window.db || (window.SenimdiSapa && window.SenimdiSapa.db) || firebase.firestore();
             const snap = await db.collection('invoices').orderBy('createdAt', 'desc').limit(100).get();
             state.invoices = snap.docs.map(d => {
                 const data = d.data();
@@ -177,26 +177,26 @@
     }
 
     async function saveInvoice(invoice) {
-        if (window.B2B && window.B2B.USE_DEMO) {
-            const list = window.B2B.DemoStore.get('invoices', []);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            const list = window.SenimdiSapa.DemoStore.get('invoices', []);
             invoice.id = 'inv' + Date.now();
             invoice.createdAt = new Date().toISOString();
             list.unshift(invoice);
-            window.B2B.DemoStore.set('invoices', list);
+            window.SenimdiSapa.DemoStore.set('invoices', list);
             
             // Deduct stock
-            const products = window.B2B.DemoStore.get('products', []);
+            const products = window.SenimdiSapa.DemoStore.get('products', []);
             invoice.items.forEach(item => {
                 const p = products.find(x => x.id === item.productId);
                 if (p) p.stock = Math.max(0, p.stock - item.qty);
             });
-            window.B2B.DemoStore.set('products', products);
+            window.SenimdiSapa.DemoStore.set('products', products);
             state.products = products;
             state.invoices = list;
             return invoice;
         }
 
-        const db = window.db || (window.B2B && window.B2B.db) || firebase.firestore();
+        const db = window.db || (window.SenimdiSapa && window.SenimdiSapa.db) || firebase.firestore();
         const ref = await db.collection('invoices').add({
             ...invoice,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -254,10 +254,10 @@
         state.products = [];
         state.invoices = [];
         
-        if (window.B2B && window.B2B.USE_DEMO) {
-            window.B2B.DemoStore.set('user', null);
-        } else if (window.B2B && window.B2B.auth) {
-            window.B2B.auth.signOut().catch(console.error);
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
+            window.SenimdiSapa.DemoStore.set('user', null);
+        } else if (window.SenimdiSapa && window.SenimdiSapa.auth) {
+            window.SenimdiSapa.auth.signOut().catch(console.error);
         }
         
         $('#phoneAuthContainer')?.classList.remove('hidden');
@@ -273,9 +273,9 @@
     }
 
     function demoLogin(asAdmin = false) {
-        const user = { uid: 'demo', displayName: asAdmin ? 'Админ' : 'Продавец', email: 'demo@b2b.local' };
-        if (window.B2B) {
-            window.B2B.DemoStore.set('user', { ...user, role: asAdmin ? 'admin' : 'seller' });
+        const user = { uid: 'demo', displayName: asAdmin ? 'Админ' : 'Продавец', email: 'demo@senimdisapa.local' };
+        if (window.SenimdiSapa) {
+            window.SenimdiSapa.DemoStore.set('user', { ...user, role: asAdmin ? 'admin' : 'seller' });
         }
         showApp(user, asAdmin ? 'admin' : 'seller');
         toast(asAdmin ? 'Вход выполнен: Администратор' : 'Вход выполнен: Продавец', 'success');
@@ -283,8 +283,8 @@
 
     async function handleAuthSuccess(user) {
         try {
-            const role = window.B2B ? await window.B2B.resolveUserRole(user) : 'admin';
-            if (window.B2B) await window.B2B.ensureUserProfile(user, role);
+            const role = window.SenimdiSapa ? await window.SenimdiSapa.resolveUserRole(user) : 'admin';
+            if (window.SenimdiSapa) await window.SenimdiSapa.ensureUserProfile(user, role);
             await showApp(user, role);
             toast('Добро пожаловать в систему!', 'success');
         } catch (e) {
@@ -434,14 +434,14 @@
         container.innerHTML = state.stores.map((st, idx) => `
             <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
                 <span class="text-sm font-bold text-slate-800">${escapeHtml(st)}</span>
-                <button onclick="window.B2B_DeleteStore(${idx})" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 transition-colors">
+                <button onclick="window.SenimdiSapa_DeleteStore(${idx})" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 transition-colors">
                     Удалить
                 </button>
             </div>
         `).join('');
     }
 
-    window.B2B_DeleteStore = async function(index) {
+    window.SenimdiSapa_DeleteStore = async function(index) {
         if (!confirm('Удалить эту торговую точку?')) return;
         const newStores = state.stores.filter((_, i) => i !== index);
         await saveStoresToDb(newStores);
@@ -497,7 +497,6 @@
 
     // ========== RENDER CAROUSEL & FEATURED MANAGEMENT ==========
     function renderCarousel() {
-        // Если у товаров есть флаг isFeatured === true, берем их, иначе первые 5 товаров
         let featured = state.products.filter(p => p.isFeatured);
         if (featured.length === 0) {
             featured = state.products.slice(0, 5);
@@ -568,12 +567,12 @@
                     <img src="${p.image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(p.name)}" class="w-8 h-8 rounded-lg object-cover shrink-0">
                     <span class="text-xs font-bold text-slate-800 truncate">${escapeHtml(p.name)}</span>
                 </div>
-                <input type="checkbox" ${p.isFeatured ? 'checked' : ''} onchange="window.B2B_ToggleFeatured('${p.id}', this.checked)" class="w-4 h-4 text-pink-600 rounded border-slate-300 focus:ring-pink-500">
+                <input type="checkbox" ${p.isFeatured ? 'checked' : ''} onchange="window.SenimdiSapa_ToggleFeatured('${p.id}', this.checked)" class="w-4 h-4 text-pink-600 rounded border-slate-300 focus:ring-pink-500">
             </label>
         `).join('');
     }
 
-    window.B2B_ToggleFeatured = async function(id, isFeatured) {
+    window.SenimdiSapa_ToggleFeatured = async function(id, isFeatured) {
         const product = state.products.find(p => p.id === id);
         if (!product) return;
         product.isFeatured = isFeatured;
@@ -610,8 +609,8 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 shrink-0">
-                    <button onclick="window.B2B_EditProduct('${p.id}')" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded-xl border border-amber-200 transition-colors">Изменить</button>
-                    <button onclick="window.B2B_DeleteProduct('${p.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 transition-colors">Удалить</button>
+                    <button onclick="window.SenimdiSapa_EditProduct('${p.id}')" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-semibold rounded-xl border border-amber-200 transition-colors">Изменить</button>
+                    <button onclick="window.SenimdiSapa_DeleteProduct('${p.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl border border-rose-200 transition-colors">Удалить</button>
                 </div>
             </div>
         `).join('');
@@ -718,7 +717,7 @@
                             <div class="font-extrabold text-emerald-600 text-base whitespace-nowrap">${fmt(inv.total || 0)}</div>
                             <div class="text-[10px] text-slate-500 font-medium">Прибыль: <span class="text-emerald-700 font-bold">${fmt(invProfit)}</span></div>
                         </div>
-                        <button onclick="window.B2B_PrintInvoice('${inv.id}')" class="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center space-x-1 shadow-sm transition-colors" title="Распечатать накладную">
+                        <button onclick="window.SenimdiSapa_PrintInvoice('${inv.id}')" class="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center space-x-1 shadow-sm transition-colors" title="Распечатать накладную">
                             <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                             <span>Печать</span>
                         </button>
@@ -734,7 +733,7 @@
     }
 
     // ========== PRINT INVOICE & REPORT FUNCTIONS ==========
-    window.B2B_PrintInvoice = function(invId) {
+    window.SenimdiSapa_PrintInvoice = function(invId) {
         const inv = state.invoices.find(i => i.id === invId);
         if (!inv) {
             toast('Накладная не найдена', 'error');
@@ -776,7 +775,7 @@
             <body>
                 <div class="header">
                     <div>
-                        <div class="title">B2B Trade — ТОПАРЛЫҚ НАКЛАДНОЙ</div>
+                        <div class="title">Senimdi Sapa — НАКЛАДНАЯ</div>
                         <div style="font-size: 12px; color: #475569;">Торговая точка: <b>${escapeHtml(inv.store || 'Магазин')}</b></div>
                     </div>
                     <div style="text-align: right; font-size: 12px;">
@@ -826,7 +825,7 @@
         printWindow.document.close();
     };
 
-    window.B2B_PrintReport = function() {
+    window.SenimdiSapa_PrintReport = function() {
         const filteredInvoices = filterInvoicesByPeriod();
         
         let totalRevenue = 0;
@@ -880,7 +879,7 @@
             <html lang="ru">
             <head>
                 <meta charset="UTF-8">
-                <title>Финансовый отчет — B2B Trade</title>
+                <title>Финансовый отчет — Senimdi Sapa</title>
                 <style>
                     body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; line-height: 1.4; }
                     .header { border-bottom: 2px solid #db2777; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
@@ -899,7 +898,7 @@
             <body>
                 <div class="header">
                     <div>
-                        <div class="title">B2B Trade — Финансовый отчет по продажам</div>
+                        <div class="title">Senimdi Sapa — Финансовый отчет по продажам</div>
                         <div class="period">Период: ${periodTitle}</div>
                     </div>
                     <div style="font-size: 11px; color: #64748b;">Дата формирования: ${new Date().toLocaleString('ru-RU')}</div>
@@ -951,7 +950,7 @@
     };
 
     // ========== GLOBAL PRODUCT ACTIONS ==========
-    window.B2B_EditProduct = function(id) {
+    window.SenimdiSapa_EditProduct = function(id) {
         const product = state.products.find(p => p.id === id);
         if (!product) return;
         
@@ -969,7 +968,7 @@
         window.scrollTo({ top: $('#addProductForm').offsetTop - 100, behavior: 'smooth' });
     };
 
-    window.B2B_DeleteProduct = async function(id) {
+    window.SenimdiSapa_DeleteProduct = async function(id) {
         if (!confirm('Вы действительно хотите удалить этот товар?')) return;
         try {
             await deleteProductFromDb(id);
@@ -992,68 +991,117 @@
         if ($('#resetFormBtn')) $('#resetFormBtn').classList.add('hidden');
     }
 
-    // ========== IMPORT FEATURE ==========
-    function downloadSampleCSV() {
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + "Название,Продажная цена,Закупочная цена,Количество,Ссылка на фото\n"
-            + "Чай KARAK Tea,1500,1000,50,https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500\n"
-            + "Кофе Арабика 250г,3200,2100,30,https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500";
-        
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "sample_products.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    // ========== EXCEL (.XLSX) EXPORT & IMPORT FEATURE ==========
+    function downloadSampleExcel() {
+        if (typeof XLSX === 'undefined') {
+            toast('Библиотека Excel не загрузилась', 'error');
+            return;
+        }
+
+        const data = [
+            {
+                "Название": "Чай KARAK Tea 100г",
+                "Продажная цена": 1500,
+                "Закупочная цена": 1000,
+                "Количество": 50,
+                "Ссылка на фото": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500"
+            },
+            {
+                "Название": "Кофе Арабика 250г",
+                "Продажная цена": 3200,
+                "Закупочная цена": 2100,
+                "Количество": 30,
+                "Ссылка на фото": "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500"
+            }
+        ];
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Товары");
+
+        // Устанавливаем ширину колонок
+        worksheet['!cols'] = [
+            { wch: 30 }, // Название
+            { wch: 16 }, // Продажная цена
+            { wch: 16 }, // Закупочная цена
+            { wch: 12 }, // Количество
+            { wch: 50 }  // Ссылка
+        ];
+
+        XLSX.writeFile(workbook, "Senimdi_Sapa_Products_Sample.xlsx");
+        toast('Пример Excel-файла скачан', 'success');
     }
 
     async function handleFileImport(file) {
         const reader = new FileReader();
-        reader.onload = async (e) => {
-            const text = e.target.result;
-            let importedProducts = [];
 
-            try {
-                if (file.name.endsWith('.json')) {
-                    importedProducts = JSON.parse(text);
-                } else {
-                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    const dataLines = lines.slice(1);
-                    importedProducts = dataLines.map(line => {
-                        const parts = line.split(/[,;]/);
-                        return {
-                            name: parts[0]?.trim() || 'Без названия',
-                            price: Number(parts[1]) || 0,
-                            costPrice: Number(parts[2]) || 0,
-                            stock: Number(parts[3]) || 0,
-                            image: parts[4]?.trim() || ''
-                        };
-                    });
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv')) {
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    if (!jsonRows || jsonRows.length < 2) {
+                        toast('Файл пуст или содержит только заголовки', 'warn');
+                        return;
+                    }
+
+                    const dataRows = jsonRows.slice(1);
+                    const importedProducts = dataRows.map(row => ({
+                        name: row[0] ? String(row[0]).trim() : 'Без названия',
+                        price: Number(row[1]) || 0,
+                        costPrice: Number(row[2]) || 0,
+                        stock: Number(row[3]) || 0,
+                        image: row[4] ? String(row[4]).trim() : ''
+                    })).filter(p => p.name !== 'Без названия' || p.price > 0);
+
+                    if (!importedProducts.length) {
+                        toast('Не найдено корректных записей для импорта', 'warn');
+                        return;
+                    }
+
+                    for (const prod of importedProducts) {
+                        await saveProduct(prod);
+                    }
+
+                    await loadProducts();
+                    renderCatalog();
+                    renderAdminProducts();
+                    renderAdminFeaturedProducts();
+                    renderCarousel();
+                    renderAdminStats();
+                    toast(`Успешно импортировано товаров: ${importedProducts.length}`, 'success');
+                } catch (err) {
+                    console.error(err);
+                    toast('Ошибка чтения файла Excel/CSV', 'error');
                 }
-
-                if (!importedProducts.length) {
-                    toast('Файл пуст или содержит неверные данные', 'warn');
-                    return;
+            };
+            reader.readAsArrayBuffer(file);
+        } else if (file.name.endsWith('.json')) {
+            reader.onload = async (e) => {
+                try {
+                    const importedProducts = JSON.parse(e.target.result);
+                    if (Array.isArray(importedProducts) && importedProducts.length) {
+                        for (const prod of importedProducts) {
+                            await saveProduct(prod);
+                        }
+                        await loadProducts();
+                        renderCatalog();
+                        renderAdminProducts();
+                        renderAdminFeaturedProducts();
+                        renderCarousel();
+                        renderAdminStats();
+                        toast(`Успешно импортировано товаров: ${importedProducts.length}`, 'success');
+                    }
+                } catch (err) {
+                    toast('Ошибка чтения JSON файла', 'error');
                 }
-
-                for (const prod of importedProducts) {
-                    await saveProduct(prod);
-                }
-
-                await loadProducts();
-                renderCatalog();
-                renderAdminProducts();
-                renderAdminFeaturedProducts();
-                renderCarousel();
-                renderAdminStats();
-                toast(`Успешно импортировано товаров: ${importedProducts.length}`, 'success');
-            } catch (err) {
-                console.error(err);
-                toast('Ошибка разбора файла импорта', 'error');
-            }
-        };
-        reader.readAsText(file);
+            };
+            reader.readAsText(file);
+        }
     }
 
     // ========== TABS ==========
@@ -1142,14 +1190,14 @@
             toast('Магазин успешно добавлен!', 'success');
         });
 
-        // Import & Export Sample
-        $('#downloadSampleBtn')?.addEventListener('click', downloadSampleCSV);
+        // Import & Export Sample Excel
+        $('#downloadSampleBtn')?.addEventListener('click', downloadSampleExcel);
         $('#importFileInput')?.addEventListener('change', (e) => {
             if (e.target.files?.[0]) handleFileImport(e.target.files[0]);
         });
 
         // Print Report
-        $('#printReportBtn')?.addEventListener('click', window.B2B_PrintReport);
+        $('#printReportBtn')?.addEventListener('click', window.SenimdiSapa_PrintReport);
 
         // Period filter buttons
         $$('.report-period-btn').forEach(btn => {
@@ -1179,17 +1227,17 @@
 
         // ─── Google Sign-In ───
         $('#googleAuthBtn')?.addEventListener('click', async () => {
-            if (window.B2B && window.B2B.USE_DEMO) {
+            if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
                 demoLogin(!!window.event?.shiftKey);
                 return;
             }
-            if (!window.B2B || !window.B2B.auth) {
+            if (!window.SenimdiSapa || !window.SenimdiSapa.auth) {
                 toast('Firebase не инициализирован', 'error');
                 return;
             }
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
-                const result = await window.B2B.auth.signInWithPopup(provider);
+                const result = await window.SenimdiSapa.auth.signInWithPopup(provider);
                 await handleAuthSuccess(result.user);
             } catch (err) {
                 toast(err.message || 'Ошибка входа Google', 'error');
@@ -1209,7 +1257,7 @@
                 return;
             }
             
-            if (window.B2B && window.B2B.USE_DEMO) {
+            if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
                 $('#phoneAuthContainer')?.classList.add('hidden');
                 $('#otpContainer')?.classList.remove('hidden');
                 toast('Код отправлен (демо: 123456)', 'info');
@@ -1219,7 +1267,7 @@
 
         $('#verifyOtpBtn')?.addEventListener('click', () => {
             const code = $('#otpCode')?.value.trim();
-            if (window.B2B && window.B2B.USE_DEMO) {
+            if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
                 if (code === '123456') demoLogin(false);
                 else toast('Неверный код. Демо-код: 123456', 'error');
             }
@@ -1346,16 +1394,16 @@
         if (window.lucide) lucide.createIcons();
         bindEvents();
         
-        if (window.B2B && window.B2B.USE_DEMO) {
+        if (window.SenimdiSapa && window.SenimdiSapa.USE_DEMO) {
             $('#demoNotice')?.classList.remove('hidden');
-            const saved = window.B2B.DemoStore.get('user');
+            const saved = window.SenimdiSapa.DemoStore.get('user');
             if (saved) showApp(saved, saved.role || 'seller');
-        } else if (window.B2B && window.B2B.auth) {
-            window.B2B.auth.onAuthStateChanged(async (user) => {
+        } else if (window.SenimdiSapa && window.SenimdiSapa.auth) {
+            window.SenimdiSapa.auth.onAuthStateChanged(async (user) => {
                 if (user) {
                     if (!state.user || state.user.uid !== user.uid) {
-                        const role = await window.B2B.resolveUserRole(user);
-                        await window.B2B.ensureUserProfile(user, role);
+                        const role = await window.SenimdiSapa.resolveUserRole(user);
+                        await window.SenimdiSapa.ensureUserProfile(user, role);
                         await showApp(user, role);
                     }
                 }
