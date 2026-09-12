@@ -1,6 +1,6 @@
 /**
  * B2B Trade — Mini-1C
- * Main application logic (Updated for New UI, Import & Advanced Analytics)
+ * Main application logic (Updated with Profit, Margin, Print Invoices & Financial Reports)
  */
 
 (function () {
@@ -479,7 +479,11 @@
                     <img src="${p.image || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(p.name)}" class="w-10 h-10 rounded-xl object-cover shrink-0 border">
                     <div class="min-w-0">
                         <p class="font-bold text-slate-800 text-sm truncate">${escapeHtml(p.name)}</p>
-                        <p class="text-xs text-slate-400 font-medium">Цена: <span class="text-pink-600 font-bold">${fmt(p.price)}</span> | Склад: ${p.stock} шт</p>
+                        <p class="text-xs text-slate-400 font-medium">
+                            Продажа: <span class="text-pink-600 font-bold">${fmt(p.price)}</span> 
+                            | Закуп: <span class="text-slate-600 font-semibold">${fmt(p.costPrice || 0)}</span> 
+                            | Склад: ${p.stock} шт
+                        </p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 shrink-0">
@@ -518,12 +522,31 @@
 
     function renderAdminStats() {
         const filteredInvoices = filterInvoicesByPeriod();
-        const revenue = filteredInvoices.reduce((s, inv) => s + (inv.total || 0), 0);
         
-        if ($('#statRevenue')) $('#statRevenue').textContent = fmt(revenue);
+        let totalRevenue = 0;   // Выручка
+        let totalCost = 0;      // Себестоимость
+
+        filteredInvoices.forEach(inv => {
+            totalRevenue += inv.total || 0;
+            (inv.items || []).forEach(item => {
+                const product = state.products.find(p => p.id === item.productId);
+                const costPrice = item.costPrice || product?.costPrice || 0;
+                totalCost += costPrice * item.qty;
+            });
+        });
+
+        const grossProfit = totalRevenue - totalCost;
+        const marginPercent = totalRevenue > 0 ? ((grossProfit / totalRevenue) * 100).toFixed(1) : 0;
+        const markupPercent = totalCost > 0 ? ((grossProfit / totalCost) * 100).toFixed(1) : 0;
+
+        if ($('#statRevenue')) $('#statRevenue').textContent = fmt(totalRevenue);
         if ($('#statCount')) $('#statCount').textContent = filteredInvoices.length;
         if ($('#statProducts')) $('#statProducts').textContent = state.products.length;
-        
+        if ($('#statCost')) $('#statCost').textContent = fmt(totalCost);
+        if ($('#statProfit')) $('#statProfit').textContent = fmt(grossProfit);
+        if ($('#statMargin')) $('#statMargin').textContent = `${marginPercent}%`;
+        if ($('#statMarkup')) $('#statMarkup').textContent = `${markupPercent}%`;
+
         const list = $('#invoicesHistoryList');
         if (!list) return;
 
@@ -534,18 +557,275 @@
         
         list.innerHTML = filteredInvoices.map(inv => {
             const date = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ru-RU') : '—';
-            return `
-            <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 text-xs">
-                <div class="flex justify-between items-start gap-2">
-                    <div>
-                        <div class="font-bold text-slate-800">${escapeHtml(inv.store || 'Магазин')}</div>
-                        <div class="text-[11px] text-slate-400 mt-0.5">${date} • ${inv.items?.length || 0} поз.</div>
+            let invCost = 0;
+
+            const itemsList = (inv.items || []).map(item => {
+                const product = state.products.find(p => p.id === item.productId);
+                const costPrice = item.costPrice || product?.costPrice || 0;
+                const itemTotalCost = costPrice * item.qty;
+                const itemRevenue = (item.price || 0) * item.qty;
+                const itemProfit = itemRevenue - itemTotalCost;
+                invCost += itemTotalCost;
+
+                return `
+                <div class="flex justify-between items-center text-[11px] text-slate-600 border-t border-slate-100 pt-1.5 mt-1.5">
+                    <div class="min-w-0 flex-1">
+                        <span class="font-medium text-slate-800">${escapeHtml(item.name || 'Товар')}</span>
+                        <span class="text-slate-400 font-normal"> (Закуп: ${fmt(costPrice)} | Продажа: ${fmt(item.price)})</span>
+                        <b class="text-slate-800"> × ${item.qty} шт</b>
                     </div>
-                    <div class="font-extrabold text-emerald-600 text-sm whitespace-nowrap">${fmt(inv.total || 0)}</div>
+                    <div class="text-right ml-2 whitespace-nowrap">
+                        <div class="font-medium text-slate-700">${fmt(itemRevenue)}</div>
+                        <div class="text-[10px] text-emerald-600 font-semibold">Прибыль: +${fmt(itemProfit)}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const invProfit = (inv.total || 0) - invCost;
+
+            return `
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 text-xs shadow-sm mb-3">
+                <div class="flex justify-between items-start gap-2 border-b border-slate-200/60 pb-2 mb-2">
+                    <div>
+                        <div class="font-bold text-slate-800 text-sm">${escapeHtml(inv.store || 'Магазин')}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">${date} • Продавец: ${escapeHtml(inv.userName || '—')}</div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right">
+                            <div class="font-extrabold text-emerald-600 text-base whitespace-nowrap">${fmt(inv.total || 0)}</div>
+                            <div class="text-[10px] text-slate-500 font-medium">Прибыль: <span class="text-emerald-700 font-bold">${fmt(invProfit)}</span></div>
+                        </div>
+                        <button onclick="window.B2B_PrintInvoice('${inv.id}')" class="px-2.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs flex items-center space-x-1 shadow-sm transition-colors" title="Распечатать накладную">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            <span>Печать</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-2.5 rounded-xl border border-slate-100 space-y-1">
+                    <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Заказанные товары и маржинальность:</div>
+                    ${itemsList || '<div class="text-[11px] text-slate-400">Состав заказа пуст</div>'}
                 </div>
             </div>`;
         }).join('');
     }
+
+    // ========== PRINT INVOICE & REPORT FUNCTIONS ==========
+    window.B2B_PrintInvoice = function(invId) {
+        const inv = state.invoices.find(i => i.id === invId);
+        if (!inv) {
+            toast('Накладная не найдена', 'error');
+            return;
+        }
+
+        const date = inv.createdAt ? new Date(inv.createdAt).toLocaleString('ru-RU') : '—';
+        
+        const rowsHtml = (inv.items || []).map((item, idx) => `
+            <tr>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: center;">${idx + 1}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee;">${escapeHtml(item.name || 'Товар')}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right;">${item.qty} шт</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right;">${fmt(item.price || 0)}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${fmt((item.price || 0) * item.qty)}</td>
+            </tr>
+        `).join('');
+
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="ru">
+            <head>
+                <meta charset="UTF-8">
+                <title>Накладная № ${inv.id}</title>
+                <style>
+                    body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; color: #1e293b; line-height: 1.4; }
+                    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #db2777; padding-bottom: 12px; margin-bottom: 20px; }
+                    .title { font-size: 20px; font-weight: bold; color: #db2777; }
+                    .meta { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+                    th { background: #f8fafc; padding: 8px; text-align: left; border-bottom: 2px solid #e2e8f0; font-size: 11px; text-transform: uppercase; color: #64748b; }
+                    .total { text-align: right; font-size: 16px; font-weight: bold; color: #059669; margin-top: 10px; }
+                    .signatures { margin-top: 40px; display: flex; justify-content: space-between; font-size: 12px; color: #64748b; }
+                    .sig-line { border-top: 1px solid #cbd5e1; width: 180px; margin-top: 30px; text-align: center; padding-top: 4px; }
+                    @media print { body { padding: 0; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <div class="title">B2B Trade — ТОПАРЛЫҚ НАКЛАДНОЙ</div>
+                        <div style="font-size: 12px; color: #475569;">Торговая точка: <b>${escapeHtml(inv.store || 'Магазин')}</b></div>
+                    </div>
+                    <div style="text-align: right; font-size: 12px;">
+                        <div><b>№:</b> ${inv.id}</div>
+                        <div><b>Дата:</b> ${date}</div>
+                    </div>
+                </div>
+
+                <div class="meta">
+                    <b>Отпустил (Продавец):</b> ${escapeHtml(inv.userName || '—')}
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;">№</th>
+                            <th>Наименование товара</th>
+                            <th style="text-align: right;">Кол-во</th>
+                            <th style="text-align: right;">Цена</th>
+                            <th style="text-align: right;">Сумма</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+
+                <div class="total">Итого к оплате: ${fmt(inv.total || 0)}</div>
+
+                <div class="signatures">
+                    <div>
+                        <div>Отпустил:</div>
+                        <div class="sig-line">Подпись</div>
+                    </div>
+                    <div>
+                        <div>Принял:</div>
+                        <div class="sig-line">Подпись</div>
+                    </div>
+                </div>
+
+                <script>
+                    window.onload = function() { window.print(); };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
+    window.B2B_PrintReport = function() {
+        const filteredInvoices = filterInvoicesByPeriod();
+        
+        let totalRevenue = 0;
+        let totalCost = 0;
+
+        filteredInvoices.forEach(inv => {
+            totalRevenue += inv.total || 0;
+            (inv.items || []).forEach(item => {
+                const product = state.products.find(p => p.id === item.productId);
+                const costPrice = item.costPrice || product?.costPrice || 0;
+                totalCost += costPrice * item.qty;
+            });
+        });
+
+        const grossProfit = totalRevenue - totalCost;
+        const marginPercent = totalRevenue > 0 ? ((grossProfit / totalRevenue) * 100).toFixed(1) : 0;
+        const markupPercent = totalCost > 0 ? ((grossProfit / totalCost) * 100).toFixed(1) : 0;
+
+        const periodTitle = {
+            today: 'За сегодня',
+            week: 'За последние 7 дней',
+            month: 'За текущий месяц',
+            all: 'За всё время',
+            custom: `С ${state.reportDateFrom || '...'} по ${state.reportDateTo || '...'}`
+        }[state.reportPeriod] || 'За выбранный период';
+
+        const rowsHtml = filteredInvoices.map((inv, idx) => {
+            let invCost = 0;
+            (inv.items || []).forEach(item => {
+                const product = state.products.find(p => p.id === item.productId);
+                invCost += (item.costPrice || product?.costPrice || 0) * item.qty;
+            });
+            const invProfit = (inv.total || 0) - invCost;
+            const invMargin = inv.total > 0 ? ((invProfit / inv.total) * 100).toFixed(1) : 0;
+
+            return `
+            <tr>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: center;">${idx + 1}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee;">${escapeHtml(inv.store || 'Магазин')}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee;">${inv.createdAt ? new Date(inv.createdAt).toLocaleString('ru-RU') : '—'}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right;">${fmt(invCost)}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold;">${fmt(inv.total || 0)}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right; color: #059669; font-weight: bold;">${fmt(invProfit)}</td>
+                <td style="padding: 6px; border-bottom: 1px solid #eee; text-align: right;">${invMargin}%</td>
+            </tr>`;
+        }).join('');
+
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="ru">
+            <head>
+                <meta charset="UTF-8">
+                <title>Финансовый отчет — B2B Trade</title>
+                <style>
+                    body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #0f172a; line-height: 1.4; }
+                    .header { border-bottom: 2px solid #db2777; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+                    .title { font-size: 22px; font-weight: bold; color: #db2777; }
+                    .period { font-size: 13px; color: #64748b; font-weight: 600; }
+                    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+                    .stat-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; }
+                    .stat-label { font-size: 10px; uppercase; font-weight: bold; color: #64748b; margin-bottom: 4px; }
+                    .stat-val { font-size: 16px; font-weight: 800; color: #0f172a; }
+                    .stat-val.profit { color: #059669; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                    th { background: #f1f5f9; padding: 8px; text-align: left; border-bottom: 2px solid #cbd5e1; font-size: 10px; text-transform: uppercase; color: #475569; }
+                    @media print { body { padding: 0; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <div class="title">B2B Trade — Финансовый отчет по продажам</div>
+                        <div class="period">Период: ${periodTitle}</div>
+                    </div>
+                    <div style="font-size: 11px; color: #64748b;">Дата формирования: ${new Date().toLocaleString('ru-RU')}</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-label">Общий оборот (Выручка)</div>
+                        <div class="stat-val">${fmt(totalRevenue)}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Себестоимость (Закуп)</div>
+                        <div class="stat-val">${fmt(totalCost)}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Чистая прибыль</div>
+                        <div class="stat-val profit">${fmt(grossProfit)}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Маржа / Наценка</div>
+                        <div class="stat-val">${marginPercent}% / ${markupPercent}%</div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px; text-align: center;">№</th>
+                            <th>Магазин / Точка</th>
+                            <th>Дата выписки</th>
+                            <th style="text-align: right;">Закуп</th>
+                            <th style="text-align: right;">Продажа</th>
+                            <th style="text-align: right;">Прибыль</th>
+                            <th style="text-align: right;">Маржа %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+
+                <script>
+                    window.onload = function() { window.print(); };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
 
     // ========== GLOBAL PRODUCT ACTIONS ==========
     window.B2B_EditProduct = function(id) {
@@ -555,6 +835,7 @@
         if ($('#productId')) $('#productId').value = product.id;
         if ($('#prodName')) $('#prodName').value = product.name;
         if ($('#prodPrice')) $('#prodPrice').value = product.price;
+        if ($('#prodCostPrice')) $('#prodCostPrice').value = product.costPrice || 0;
         if ($('#prodStock')) $('#prodStock').value = product.stock;
         if ($('#prodImageUrl')) $('#prodImageUrl').value = product.image || '';
         
@@ -590,9 +871,9 @@
     // ========== IMPORT FEATURE ==========
     function downloadSampleCSV() {
         const csvContent = "data:text/csv;charset=utf-8," 
-            + "Название,Цена,Количество,Ссылка на фото\n"
-            + "Чай KARAK Tea,1500,50,https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500\n"
-            + "Кофе Арабика 250г,3200,30,https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500";
+            + "Название,Продажная цена,Закупочная цена,Количество,Ссылка на фото\n"
+            + "Чай KARAK Tea,1500,1000,50,https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500\n"
+            + "Кофе Арабика 250г,3200,2100,30,https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500";
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -614,15 +895,15 @@
                     importedProducts = JSON.parse(text);
                 } else {
                     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    // Пропуск заголовка
                     const dataLines = lines.slice(1);
                     importedProducts = dataLines.map(line => {
                         const parts = line.split(/[,;]/);
                         return {
                             name: parts[0]?.trim() || 'Без названия',
                             price: Number(parts[1]) || 0,
-                            stock: Number(parts[2]) || 0,
-                            image: parts[3]?.trim() || ''
+                            costPrice: Number(parts[2]) || 0,
+                            stock: Number(parts[3]) || 0,
+                            image: parts[4]?.trim() || ''
                         };
                     });
                 }
@@ -718,6 +999,9 @@
         $('#importFileInput')?.addEventListener('change', (e) => {
             if (e.target.files?.[0]) handleFileImport(e.target.files[0]);
         });
+
+        // Print Report
+        $('#printReportBtn')?.addEventListener('click', window.B2B_PrintReport);
 
         // Period filter buttons
         $$('.report-period-btn').forEach(btn => {
@@ -820,7 +1104,13 @@
             
             const items = Object.entries(state.cart).map(([productId, qty]) => {
                 const p = state.products.find(x => x.id === productId);
-                return { productId, name: p?.name, price: p?.price, qty };
+                return { 
+                    productId, 
+                    name: p?.name, 
+                    price: p?.price || 0,
+                    costPrice: p?.costPrice || 0,
+                    qty 
+                };
             });
             
             const invoice = {
@@ -850,6 +1140,7 @@
             const id = $('#productId').value;
             const name = $('#prodName').value.trim();
             const price = +$('#prodPrice').value;
+            const costPrice = +$('#prodCostPrice').value || 0;
             const stock = +$('#prodStock').value;
             const imageUrlInput = $('#prodImageUrl')?.value.trim();
             const fileInput = $('#prodImage');
@@ -868,6 +1159,7 @@
                 ...(id ? { id } : {}),
                 name,
                 price,
+                costPrice,
                 stock,
                 image
             };
