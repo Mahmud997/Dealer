@@ -870,19 +870,31 @@
 
     // ========== IMPORT FEATURE ==========
     function downloadSampleCSV() {
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + "Название,Продажная цена,Закупочная цена,Количество,Ссылка на фото\n"
-            + "Чай KARAK Tea,1500,1000,50,https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500\n"
-            + "Кофе Арабика 250г,3200,2100,30,https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500";
-        
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "sample_products.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+    // 1. Используем разделитель точку с запятой (;)
+    const headers = ["Название", "Продажная цена", "Закупочная цена", "Количество", "Ссылка на фото"];
+    const rows = [
+        ["Чай KARAK Tea", 1500, 1000, 50, "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500"],
+        ["Кофе Арабика 250г", 3200, 2100, 30, "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500"]
+    ];
+
+    // 2. Добавляем BOM (\uFEFF) в начало, чтобы Excel правильно понял UTF-8
+    let csvString = "\uFEFF" + headers.join(";") + "\n";
+    rows.forEach(row => {
+        csvString += row.join(";") + "\n";
+    });
+
+    // 3. Создаем Blob с явным указанием кодировки UTF-8
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "sample_products.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
 
     async function handleFileImport(file) {
         const reader = new FileReader();
