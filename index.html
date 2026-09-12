@@ -192,10 +192,7 @@
                     <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Выберите магазин-получатель:</label>
                     <select id="selectStore" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-pink-500">
                         <option value="">-- Выберите торговую точку --</option>
-                        <option value="Магазин №1 (Абай)">Магазин №1 (Абай)</option>
-                        <option value="Магазин №2 (Север)">Магазин №2 (Север)</option>
-                        <option value="Минимаркет '24/7'">Минимаркет "24/7"</option>
-                        <option value="ТЦ Мега">ТЦ Мега</option>
+                        <!-- Dynamic stores list -->
                     </select>
                 </div>
                 
@@ -277,6 +274,40 @@
                         Сохранить товар в базе
                     </button>
                 </form>
+            </div>
+
+            <!-- Управление магазинами (Добавление / Удаление торговых точек) -->
+            <div class="bg-white border border-pink-100 rounded-3xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold mb-1 flex items-center space-x-2 text-slate-800">
+                    <i data-lucide="store" class="w-5 h-5 text-pink-500"></i>
+                    <span>Управление магазинами / Торговыми точками</span>
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">Добавляйте новые филиалы или удаляйте старые из списка выбора накладной</p>
+
+                <form id="addStoreForm" class="flex gap-2 mb-4">
+                    <input type="text" id="newStoreName" placeholder="Название магазина (напр. Магазин №3)" 
+                           class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-pink-500" required>
+                    <button type="submit" class="px-5 py-3 bg-gradient-to-r from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white text-sm font-semibold rounded-2xl shadow-md shadow-pink-500/10 transition-all shrink-0">
+                        Добавить
+                    </button>
+                </form>
+
+                <div id="adminStoresList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <!-- Загружаются магазины -->
+                </div>
+            </div>
+
+            <!-- Управление витриной новинок -->
+            <div class="bg-white border border-pink-100 rounded-3xl p-6 shadow-sm">
+                <h3 class="text-lg font-bold mb-1 flex items-center space-x-2 text-slate-800">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-pink-500"></i>
+                    <span>Управление витриной новинок (Слайдер)</span>
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">Отметьте галочками товары, которые должны отображаться в блоке «Витрина новинок»</p>
+                
+                <div id="adminFeaturedProductsList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    <!-- Список товаров с чекбоксами для показа в витрине -->
+                </div>
             </div>
 
             <!-- Массовый Импорт Товаров -->
