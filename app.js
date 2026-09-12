@@ -653,7 +653,7 @@
             <body>
                 <div class="header">
                     <div>
-                        <div class="title">B2B Trade — ТОПАРЛЫҚ НАКЛАДНОЙ</div>
+                        <div class="title">Senimdi Sapa</div>
                         <div style="font-size: 12px; color: #475569;">Торговая точка: <b>${escapeHtml(inv.store || 'Магазин')}</b></div>
                     </div>
                     <div style="text-align: right; font-size: 12px;">
