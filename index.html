@@ -32,6 +32,9 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
+    <!-- SheetJS (XLSX Library for Export/Import) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -318,21 +321,21 @@
                             <i data-lucide="file-up" class="w-5 h-5 text-violet-500"></i>
                             <span>Массовый импорт товаров</span>
                         </h3>
-                        <p class="text-xs text-slate-400 mt-0.5">Загрузите каталог списком из файла CSV или JSON</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Загрузите каталог списком из файла Excel (.xlsx), CSV или JSON</p>
                     </div>
-                    <button id="downloadSampleBtn" class="text-xs px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl flex items-center space-x-1.5 transition-colors self-start sm:self-auto">
+                    <button id="downloadSampleBtn" class="text-xs px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium rounded-xl flex items-center space-x-1.5 transition-colors self-start sm:self-auto">
                         <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                        <span>Скачать пример CSV</span>
+                        <span>Скачать пример Excel (.xlsx)</span>
                     </button>
                 </div>
 
                 <div class="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-center">
-                    <input type="file" id="importFileInput" accept=".csv, .json" class="hidden">
+                    <input type="file" id="importFileInput" accept=".xlsx, .xls, .csv, .json" class="hidden">
                     <label for="importFileInput" class="cursor-pointer flex flex-col items-center justify-center space-y-2 py-2">
                         <div class="p-3 bg-white rounded-2xl border border-slate-200 text-violet-500 shadow-sm">
                             <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
                         </div>
-                        <span class="text-sm font-semibold text-slate-700">Нажмите для выбора CSV/JSON файла</span>
+                        <span class="text-sm font-semibold text-slate-700">Нажмите для выбора Excel/CSV/JSON файла</span>
                         <span class="text-xs text-slate-400">Формат колонок: Название, Продажная цена, Закупочная цена, Количество, Ссылка</span>
                     </label>
                 </div>
